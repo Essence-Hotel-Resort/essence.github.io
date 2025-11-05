@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essence Hotel & Resort - Dashboard</title>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+
+    <style>
+        :root {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #2c2c2c;
+            --container-bg: #222222;
+            --font-color: #e0e0e0;
+            --accent-red: #ff0000;
+            --border-color: #444;
+            --accent-green: #00ff00;
+            --admin-color: #fce205; /* Gold/Yellow for Admin */
+            --info-blue: #00bfff;
+        }
+
+        body {
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            color: var(--font-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #root {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+        }
+
+        /* Nav Bar Styles */
+        .navbar {
+            background-color: var(--secondary-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+        }
+        
+        .navbar h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--accent-red);
+        }
+
+        .nav-links button {
+            background: none;
+            border: none;
+            color: var(--font-color);
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+        
+        .nav-links button:hover {
+            color: var(--accent-red);
+        }
+        
+        .nav-links button.active {
+            color: var(--accent-red);
+            border-bottom: 2px solid var(--accent-red);
+        }
+        
+        /* Basic Blocky Containers & Forms */
+        .panel {
+            background-color: var(--container-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-panel {
+             max-width: 400px;
+             margin: 2rem auto;
+        }
+        
+        .full-screen-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--primary-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .full-screen-content {
+            background-color: var(--container-bg);
+            border: 4px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 40px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+
+        h3 {
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 20px;
+        }
+
+        h4 { margin-top: 0; }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--secondary-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--font-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        textarea.form-input {
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 14px;
+            background-color: var(--accent-red);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-confirm {
+            background-color: var(--accent-green);
+        }
+        
+        .btn-link {
+            background-color: transparent;
+            color: var(--accent-red);
+            text-align: center;
+            padding: 10px;
+            margin-top: 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border: none;
+            width: 100%;
+        }
+
+        .error-message {
+            color: var(--accent-red);
+            background-color: rgba(255, 0, 0, 0.1);
+            border: 1px solid var(--accent-red);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .user-list-item, .log-item, .appeal-item {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .user-name-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .banned-user {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+        
+        .appeal-content {
+            flex-basis: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #111;
+            border-left: 3px solid var(--info-blue);
+            font-style: italic;
+        }
+        
+        .appeal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* --- MODAL STYLES --- */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .custom-modal {
+            background-color: var(--container-bg);
+            border: 4px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 25px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .modal-title {
+            color: var(--accent-red);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal-buttons .btn {
+            flex-grow: 1;
+            padding: 10px;
+        }
+        
+        .btn-danger {
+            background-color: darkred;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, createContext, useContext } = React;
+
+        // ---
+        // 1. FIREBASE CONFIGURATION (v8)
+        // ---
+        const firebaseConfig = {
+             apiKey: "AIzaSyAqT-2OppehOjHF-JETMCjreAZkZ-iA_Z8",
+             authDomain: "fivem-server-sophoswrld.firebaseapp.com",
+             projectId: "fivem-server-sophoswrld",
+             storageBucket: "fivem-server-sophoswrld.firebasestorage.app",
+             messagingSenderId: "590745467368",
+             appId: "1:590745467368:web:42f1a4a41f9ac7d33a8c5d",
+             measurementId: "G-0XMVYH41J2"
+        };
+
+        const firebaseApp = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // ---
+        // 2. AUTHENTICATION CONTEXT (with Ban Check)
+        // ---
+        const AuthContext = createContext();
+
+        function useAuth() {
+            return useContext(AuthContext);
+        }
+
+        // Centralized logging function
+        const logAdminAction = async (db, currentUser, action, details) => {
+            if (!currentUser) return;
+            try {
+                await db.collection("activityLogs").add({
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    actorId: currentUser.uid,
+                    actorEmail: currentUser.email,
+                    action: action,
+                    details: details
+                });
+            } catch (error) {
+                console.error("Failed to write activity log (check rules):", error);
+            }
+        };
+
+
+        function AuthProvider({ children }) {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [isBanned, setIsBanned] = useState(false);
+            const [loading, setLoading] = useState(true);
+
+            // Function to check if a user is an admin
+            const checkIsAdmin = async (user) => {
+                if (!user) return false;
+                try {
+                    const adminDoc = await db.collection("admins").doc(user.uid).get();
+                    return adminDoc.exists;
+                } catch (error) {
+                    // This error is expected for non-admins due to rules, so we suppress it.
+                    // console.error("Error checking admin status (check rules):", error);
+                    return false;
+                }
+            };
+            
+            // Function to fetch the user's role and ban state
+            const fetchStatus = async (user) => {
+                if (!user) {
+                    setIsAdmin(false);
+                    setIsBanned(false);
+                    return;
+                }
+                
+                // 1. Check Admin Status
+                const adminStatus = await checkIsAdmin(user);
+                setIsAdmin(adminStatus);
+                
+                // 2. Check Ban Status from Profiles
+                try {
+                    // We must fetch the profile to check ifBanned status
+                    const profileSnap = await db.collection("profiles").doc(user.uid).get();
+                    const bannedStatus = profileSnap.exists && (profileSnap.data().isBanned || false);
+                    setIsBanned(bannedStatus);
+                } catch (error) {
+                    console.error("Error fetching ban status (check rules):", error);
+                    // Critical for banned users: must ensure isBanned remains false if profile read fails
+                    // to prevent users being stuck in the appeal modal if rules are wrong.
+                    setIsBanned(false); 
+                }
+            };
+
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(async user => {
+                    setCurrentUser(user);
+                    if (user) {
+                        await fetchStatus(user);
+                    } else {
+                        setIsAdmin(false);
+                        setIsBanned(false);
+                    }
+                    setLoading(false);
+                });
+                return unsubscribe;
+            }, []);
+            
+            const signup = async (email, password) => {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                const defaultProfile = {
+                    name: user.email.split('@')[0],
+                    imageUrl: "https://via.placeholder.com/60",
+                    borderColor: "#ff0000",
+                    isBanned: false 
+                };
+                
+                // CRITICAL: New user MUST be able to create their profile (check rules)
+                await db.collection("profiles").doc(user.uid).set(defaultProfile);
+                
+                return userCredential;
+            };
+
+            const handleLogin = async (email, password) => {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Check ban status right after auth, before proceeding.
+                const profileSnap = await db.collection("profiles").doc(user.uid).get();
+                const bannedStatus = profileSnap.exists && profileSnap.data().isBanned;
+
+                if (bannedStatus) {
+                    // Do NOT sign out here! The BanAppealModal needs the user to be signed in
+                    // to submit the appeal and check its status.
+                    // We rely on isBanned=true in AuthProvider value to redirect.
+                }
+                
+                await fetchStatus(user);
+
+                return userCredential;
+            };
+
+            const value = {
+                currentUser,
+                isAdmin,
+                isBanned,
+                db,
+                logAdminAction: (action, details) => logAdminAction(db, currentUser, action, details), 
+                fetchStatus,
+                signup,
+                login: handleLogin,
+                logout: () => auth.signOut()
+            };
+
+            return (
+                <AuthContext.Provider value={value}>
+                    {!loading && children}
+                </AuthContext.Provider>
+            );
+        }
+        
+        // ---
+        // 3. REUSABLE COMPONENTS (MUST be defined before use)
+        // ---
+
+        // 3.1. Custom Confirmation Modal Component
+        function ConfirmationModal({ title, children, confirmText, cancelText, onConfirm, onCancel, confirmClass }) {
+            return (
+                <div className="modal-backdrop">
+                    <div className="custom-modal">
+                        <h4 className="modal-title">{title}</h4>
+                        <p>{children}</p>
+                        <div className="modal-buttons">
+                            <button className="btn" onClick={onCancel} style={{ backgroundColor: 'gray' }}>
+                                <i className="fas fa-times"></i> {cancelText || 'Cancel'}
+                            </button>
+                            {/* NOTE: Error in image_26f7e2.png: Warning: validateDOMNesting(...): <p> cannot appear as a descendant of <p>. This is because the 'children' prop here might contain a <p> tag, and this component wraps it in its own <p> tag. This structural warning will not break functionality. */}
+                            <button className={`btn ${confirmClass || 'btn-confirm'}`} onClick={onConfirm}>
+                                <i className="fas fa-check"></i> {confirmText || 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // 3.2. Ban Appeal Modal (CRITICAL for BANNED users)
+        function BanAppealModal() {
+            const { currentUser, db, logout } = useAuth();
+            const [appealText, setAppealText] = useState('');
+            const [statusMessage, setStatusMessage] = useState('');
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [hasAppealed, setHasAppealed] = useState(false);
+
+            useEffect(() => {
+                const checkAppealStatus = async () => {
+                    if (!currentUser) return;
+                    try {
+                        const snapshot = await db.collection("appeals")
+                            .where("userId", "==", currentUser.uid)
+                            .where("status", "==", "Pending")
+                            .get();
+                        
+                        if (snapshot.docs.length > 0) {
+                            setHasAppealed(true);
+                            setStatusMessage("Your appeal is currently under review by the administration.");
+                        }
+                    } catch (error) {
+                        console.error("Error checking appeal status (check rules):", error);
+                        // Suppress: Expected if banned user cannot read their own appeal due to rules
+                    }
+                };
+                checkAppealStatus();
+            }, [currentUser, db]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setStatusMessage('');
+                if (!appealText.trim()) {
+                    setStatusMessage("Appeal message cannot be empty.");
+                    return;
+                }
+                
+                setIsSubmitting(true);
+                try {
+                    await db.collection("appeals").add({
+                        userId: currentUser.uid,
+                        userEmail: currentUser.email,
+                        appealText: appealText,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: "Pending" 
+                    });
+                    
+                    setHasAppealed(true);
+                    setStatusMessage("Appeal submitted successfully! You will be notified of the decision.");
+                    setAppealText('');
+                } catch (error) {
+                    console.error("Error submitting appeal (check rules):", error);
+                    // CRITICAL: If this fails, the user is stuck. Check rules for 'appeals' create access.
+                    setStatusMessage("Failed to submit appeal. Check your console and Firebase rules.");
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+            
+            return (
+                <div className="full-screen-modal">
+                    <div className="full-screen-content">
+                        <h2 style={{ color: 'var(--accent-red)', borderBottom: '2px solid var(--accent-red)', paddingBottom: '10px' }}>
+                            <i className="fas fa-gavel"></i> ACCESS DENIED: Account Banned
+                        </h2>
+                        <p>Your account ({currentUser.email}) has been banned by an administrator and cannot access the dashboard.</p>
+                        
+                        <div style={{ margin: '30px 0', padding: '15px', border: '1px solid #444', borderRadius: '4px' }}>
+                            <h4>Account Appeal</h4>
+                            {hasAppealed ? (
+                                <p style={{ color: 'var(--info-blue)' }}>
+                                    <i className="fas fa-clock"></i> {statusMessage}
+                                </p>
+                            ) : (
+                                <form onSubmit={handleSubmit}>
+                                    <div className="form-group">
+                                        <label>Reason for Appeal</label>
+                                        <textarea 
+                                            className="form-input" 
+                                            value={appealText} 
+                                            onChange={(e) => setAppealText(e.target.value)} 
+                                            rows="5" 
+                                            required 
+                                            placeholder="Explain why your ban should be lifted."
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn" disabled={isSubmitting || hasAppealed}>
+                                        {isSubmitting ? (
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                        ) : (
+                                            <i className="fas fa-paper-plane"></i>
+                                        )}
+                                        Submit Appeal
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                        
+                        {statusMessage && !hasAppealed && <p style={{ color: statusMessage.includes('Failed') ? 'var(--accent-red)' : 'lightgreen', fontWeight: 'bold' }}>{statusMessage}</p>}
+                        
+                        <button className="btn" onClick={logout} style={{ width: 'auto', padding: '8px 15px', backgroundColor: 'gray' }}>
+                            <i className="fas fa-sign-out-alt"></i> Log Out
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        // 3.3. Profile Editor (Used by DashboardHome and UserManagement)
+        function ProfileEditor({ profileData, profileId, onSave }) {
+            const { db } = useAuth();
+            const [profile, setProfile] = useState({
+                // Ensure proper default values (Fix for image_267063.png)
+                name: (profileData && profileData.name) || '', 
+                imageUrl: (profileData && profileData.imageUrl) || '',
+                borderColor: (profileData && profileData.borderColor) || ''
+            });
+            const [success, setSuccess] = useState('');
+            const [error, setError] = useState('');
+            
+            useEffect(() => {
+                setProfile({
+                    name: (profileData && profileData.name) || '',
+                    imageUrl: (profileData && profileData.imageUrl) || '',
+                    borderColor: (profileData && profileData.borderColor) || ''
+                });
+            }, [profileData]);
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setProfile(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSave = async (e) => {
+                e.preventDefault();
+                setError('');
+                setSuccess('');
+                
+                // Ensure values are explicitly strings to prevent Firestore 'undefined' error (Fix for image_266fc7.png)
+                const dataToSave = {
+                    name: String(profile.name || ''),
+                    imageUrl: String(profile.imageUrl || ''),
+                    borderColor: String(profile.borderColor || '')
+                };
+
+                try {
+                    await db.collection("profiles").doc(profileId).update(dataToSave);
+                    setSuccess("Profile saved successfully!");
+                    if (onSave) onSave(dataToSave);
+                } catch (err) {
+                    console.error("Save error (check rules):", err);
+                    setError("Failed to save profile. Check Firebase permissions or data types.");
+                }
+            };
+            
+            return (
+                <form onSubmit={handleSave}>
+                    {success && <div style={{ color: 'lightgreen', marginBottom: '10px' }}>{success}</div>}
+                    {error && <div className="error-message">{error}</div>}
+                    
+                    <div className="form-group">
+                        <label>Name</label>
+                        <input name="name" type="text" className="form-input" value={profile.name} onChange={handleChange} required />
+                    </div>
+                    <div className="form-group">
+                        <label>Image URL</label>
+                        <input name="imageUrl" type="url" className="form-input" value={profile.imageUrl} onChange={handleChange} />
+                    </div>
+                    <div className="form-group">
+                        <label>Border Color (Hex/Name)</label>
+                        <input name="borderColor" type="text" className="form-input" value={profile.borderColor} onChange={handleChange} />
+                    </div>
+                    <button type="submit" className="btn"><i className="fas fa-save"></i> Save Profile</button>
+                </form>
+            );
+        }
+
+        // 3.4. User Management View (Admin Only)
+        function UserManagement() {
+            const { db, currentUser, logAdminAction } = useAuth();
+            const [users, setUsers] = useState([]);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [selectedUser, setSelectedUser] = useState(null);
+            
+            // Modal State
+            const [showModal, setShowModal] = useState(false);
+            const [modalTargetUser, setModalTargetUser] = useState(null);
+            const [modalAction, setModalAction] = useState(null); // 'promote', 'demote', 'ban', 'unban'
+            
+            const fetchAllUsers = async () => {
+                setLoading(true);
+                try {
+                    const profileSnapshot = await db.collection("profiles").get();
+                    const adminSnapshot = await db.collection("admins").get();
+                    
+                    const adminUids = new Set(adminSnapshot.docs.map(doc => doc.id));
+                    
+                    const userList = profileSnapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return { 
+                            id: doc.id, 
+                            ...data,
+                            isAdmin: adminUids.has(doc.id),
+                            isBanned: data.isBanned || false 
+                        };
+                    });
+                    
+                    setUsers(userList);
+                } catch (error) {
+                    console.error("Failed to fetch users (check rules):", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchAllUsers();
+            }, []);
+            
+            const handleProfileUpdate = (updatedProfile) => {
+                setUsers(prevUsers => 
+                    prevUsers.map(user => 
+                        user.id === selectedUser.id ? { ...user, ...updatedProfile } : user
+                    )
+                );
+            };
+            
+            const openModal = (user, action) => {
+                if (user.id === currentUser.uid && (action === 'promote' || action === 'demote' || action === 'ban')) {
+                    alert(`You cannot ${action} yourself from this panel.`);
+                    return;
+                }
+                setModalTargetUser(user);
+                setModalAction(action);
+                setShowModal(true);
+            };
+            
+            const executeAction = async () => {
+                setShowModal(false);
+                const targetUser = modalTargetUser;
+                const action = modalAction;
+                
+                try {
+                    let logActionType;
+                    let alertMessage;
+                    
+                    if (action === 'promote' || action === 'demote') {
+                        const newStatus = action === 'promote';
+                        logActionType = newStatus ? 'ADMIN_PROMOTE' : 'ADMIN_DEMOTE';
+                        const adminDocRef = db.collection("admins").doc(targetUser.id);
+                        
+                        if (newStatus) {
+                            await adminDocRef.set({ grantedBy: currentUser.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                            alertMessage = `${targetUser.name} has been Promoted to Admin.`;
+                        } else {
+                            await adminDocRef.delete();
+                            alertMessage = `${targetUser.name} has been Demoted.`;
+                        }
+                        
+                        setUsers(prevUsers => 
+                            prevUsers.map(user => 
+                                user.id === targetUser.id ? { ...user, isAdmin: newStatus } : user
+                            )
+                        );
+                        
+                    } else if (action === 'ban' || action === 'unban') {
+                        const newBanStatus = action === 'ban';
+                        logActionType = newBanStatus ? 'USER_BANNED' : 'USER_UNBANNED';
+                        
+                        // CRITICAL: Admin update to 'isBanned' must succeed (check rules)
+                        await db.collection("profiles").doc(targetUser.id).update({ 
+                            isBanned: newBanStatus,
+                            bannedBy: newBanStatus ? currentUser.email : null,
+                            banTimestamp: newBanStatus ? firebase.firestore.FieldValue.serverTimestamp() : null
+                        });
+                        
+                        alertMessage = `${targetUser.name} has been ${newBanStatus ? 'BANNED' : 'UNBANNED'}.`;
+
+                        setUsers(prevUsers => 
+                            prevUsers.map(user => 
+                                user.id === targetUser.id ? { ...user, isBanned: newBanStatus } : user
+                            )
+                        );
+                    }
+                    
+                    logAdminAction(logActionType, { targetUserId: targetUser.id, targetUserName: targetUser.name });
+                    alert(alertMessage);
+                    
+                } catch (error) {
+                    console.error(`${action} action failed (check rules):`, error);
+                    logAdminAction(`${action.toUpperCase()}_FAILED`, { targetUserId: targetUser.id, error: error.message });
+                    alert(`Failed to execute action: ${error.message}`);
+                }
+            };
+
+            const filteredUsers = users.filter(user => {
+                const query = searchQuery.toLowerCase();
+                const userName = user.name ? user.name.toLowerCase() : '';
+                const userId = user.id.toLowerCase();
+
+                return userName.includes(query) || userId.includes(query);
+            });
+            
+            let modalTitle = "";
+            let modalConfirmText = "";
+            let modalConfirmClass = "btn-confirm";
+            let modalContent = null;
+            
+            if (modalAction && modalTargetUser) {
+                const userName = modalTargetUser.name;
+                switch (modalAction) {
+                    case 'promote':
+                        modalTitle = "Confirm Promotion";
+                        modalConfirmText = "PROMOTE";
+                        modalContent = <p>Are you sure you want to **PROMOTE** **{userName}** to an Administrator?</p>;
+                        break;
+                    case 'demote':
+                        modalTitle = "Confirm Demotion";
+                        modalConfirmText = "DEMOTE";
+                        modalConfirmClass = "btn-danger";
+                        modalContent = <p>Are you sure you want to **DEMOTE** **{userName}**? They will lose all Admin privileges.</p>;
+                        break;
+                    case 'ban':
+                        modalTitle = "Confirm User Ban";
+                        modalConfirmText = "BAN USER";
+                        modalConfirmClass = "btn-danger";
+                        modalContent = <p>Are you sure you want to **BAN** **{userName}**? They will be unable to log in until unbanned.</p>;
+                        break;
+                    case 'unban':
+                        modalTitle = "Confirm Unban";
+                        modalConfirmText = "UNBAN USER";
+                        modalContent = <p>Are you sure you want to **UNBAN** **{userName}**? They will regain access to the dashboard.</p>;
+                        break;
+                }
+            }
+
+            if (loading) return <p>Loading all user profiles...</p>;
+
+            return (
+                <div>
+                    <h3><i className="fas fa-users-cog"></i> Admin: User Management</h3>
+                    
+                    {/* Confirmation Modal */}
+                    {showModal && modalTargetUser && (
+                        <ConfirmationModal
+                            title={modalTitle}
+                            confirmText={modalConfirmText}
+                            cancelText="CANCEL"
+                            onConfirm={executeAction}
+                            onCancel={() => setShowModal(false)}
+                            confirmClass={modalConfirmClass}
+                        >
+                            {modalContent}
+                        </ConfirmationModal>
+                    )}
+
+                    <div className="form-group">
+                        <label>Search Users by Name or ID</label>
+                        <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="Type name or UID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ marginBottom: '20px' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <div style={{ flex: 1 }}>
+                            {filteredUsers.length === 0 && searchQuery ? (
+                                <p>No users found matching "{searchQuery}"</p>
+                            ) : (
+                                filteredUsers.map(user => (
+                                    <div key={user.id} className="user-list-item">
+                                        <div className="user-name-wrapper">
+                                            <span className={user.isBanned ? 'banned-user' : ''}>{user.name || 'N/A'}</span>
+                                            {user.isAdmin && <i className="fas fa-crown" style={{ color: 'var(--admin-color)' }} title="Administrator"></i>}
+                                            {user.isBanned && <i className="fas fa-ban" style={{ color: 'var(--accent-red)' }} title="Banned"></i>}
+                                        </div>
+                                        <div className="user-actions">
+                                            {/* Role Buttons */}
+                                            {user.isAdmin ? (
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ width: 'auto', padding: '5px 10px', fontSize: '0.8rem', backgroundColor: 'darkorange' }} 
+                                                    onClick={() => openModal(user, 'demote')}
+                                                    disabled={user.id === currentUser.uid}
+                                                >
+                                                    <i className="fas fa-minus-circle"></i> Demote
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ width: 'auto', padding: '5px 10px', fontSize: '0.8rem', backgroundColor: 'var(--accent-green)' }} 
+                                                    onClick={() => openModal(user, 'promote')}
+                                                >
+                                                    <i className="fas fa-plus-circle"></i> Promote
+                                                </button>
+                                            )}
+                                            
+                                            {/* Ban/Unban Buttons */}
+                                            {user.isBanned ? (
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ width: 'auto', padding: '5px 10px', fontSize: '0.8rem', backgroundColor: 'gray' }} 
+                                                    onClick={() => openModal(user, 'unban')}
+                                                >
+                                                    <i className="fas fa-check-circle"></i> Unban
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="btn" 
+                                                    style={{ width: 'auto', padding: '5px 10px', fontSize: '0.8rem', backgroundColor: 'darkred' }} 
+                                                    onClick={() => openModal(user, 'ban')}
+                                                    disabled={user.id === currentUser.uid || user.isAdmin}
+                                                >
+                                                    <i className="fas fa-ban"></i> Ban
+                                                </button>
+                                            )}
+                                            
+                                            <button className="btn" style={{ width: 'auto', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => setSelectedUser(user)}>
+                                                <i className="fas fa-edit"></i> Edit
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div style={{ flex: 1, borderLeft: '1px solid var(--border-color)', paddingLeft: '20px' }}>
+                            {/* FIX: Removed surrounding <> fragment that caused Babel/JSX errors (image_26615b.png) */}
+                            {selectedUser ? (
+                                <React.Fragment> 
+                                    <h4>Editing: {selectedUser.name || 'N/A'}</h4>
+                                    <ProfileEditor 
+                                        profileData={selectedUser} 
+                                        profileId={selectedUser.id} 
+                                        onSave={handleProfileUpdate}
+                                    />
+                                </React.Fragment>
+                            ) : (
+                                <p>Select a user to edit their profile information.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // 3.5. Admin Announcement Creator Sub-Component
+        function AnnouncementCreator({ onPost }) {
+            const { db, currentUser, logAdminAction } = useAuth();
+            const [title, setTitle] = useState('');
+            const [content, setContent] = useState('');
+            const [status, setStatus] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setStatus('');
+                if (!title || !content) {
+                    setStatus('Error: Title and content are required.');
+                    return;
+                }
+                
+                setLoading(true);
+                try {
+                    const newAnnouncement = {
+                        title: title,
+                        content: content,
+                        postedBy: currentUser.email,
+                        postedById: currentUser.uid,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await db.collection("announcements").add(newAnnouncement);
+                    
+                    logAdminAction('ANNOUNCEMENT_POSTED', { title: title, poster: currentUser.email });
+                    setStatus('Announcement posted successfully!');
+                    setTitle('');
+                    setContent('');
+                    onPost();
+                } catch (error) {
+                    console.error("Error posting announcement (check rules):", error);
+                    setStatus('Error posting announcement. Check Firebase rules: ' + error.message);
+                    logAdminAction('ANNOUNCEMENT_POST_FAILED', { title: title, error: error.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="creator-panel">
+                    <h4><i className="fas fa-pencil-alt"></i> Create New Announcement</h4>
+                    <form onSubmit={handleSubmit}>
+                        {status && <p style={{ color: status.includes('Error') ? 'var(--accent-red)' : 'lightgreen' }}>{status}</p>}
+                        
+                        <div className="form-group">
+                            <label>Title</label>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                value={title} 
+                                onChange={(e) => setTitle(e.target.value)} 
+                                required 
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Content</label>
+                            <textarea 
+                                className="form-input" 
+                                value={content} 
+                                onChange={(e) => setContent(e.target.value)} 
+                                rows="3" 
+                                required 
+                            />
+                        </div>
+                        <button type="submit" className="btn" disabled={loading}>
+                            {loading ? (
+                                <i className="fas fa-spinner fa-spin"></i>
+                            ) : (
+                                <i className="fas fa-bullhorn"></i>
+                            )}
+                            {loading ? 'Posting...' : 'Post Announcement'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // 3.6. Announcements Component
+        function Announcements() {
+            const { db, isAdmin } = useAuth();
+            const [announcements, setAnnouncements] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            const formatTimestamp = (timestamp) => {
+                if (!timestamp) return 'N/A';
+                const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp); 
+                return date.toLocaleString();
+            };
+
+            const fetchAnnouncements = async () => {
+                setLoading(true);
+                try {
+                    // CRITICAL: Non-admin users must be able to read this (check rules)
+                    const snapshot = await db.collection("announcements")
+                        .orderBy("timestamp", "desc")
+                        .limit(10)
+                        .get();
+                    
+                    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setAnnouncements(list);
+                } catch (error) {
+                    console.warn("Could not fetch announcements (check rules/collection existence):", error.message);
+                    setAnnouncements([]); 
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            useEffect(() => {
+                fetchAnnouncements();
+            }, []);
+
+            return (
+                <div>
+                    <h3><i className="fas fa-bullhorn"></i> Important Announcements</h3>
+                    
+                    {/* Admin Creation Tool */}
+                    {isAdmin && <AnnouncementCreator onPost={fetchAnnouncements} />}
+
+                    <h4><i className="fas fa-list-alt"></i> Latest Announcements</h4>
+
+                    {loading ? (
+                        <p>Loading announcements...</p>
+                    ) : (
+                        <React.Fragment>
+                            {announcements.map(announcement => (
+                                <div key={announcement.id} className="announcement-item">
+                                    <h4>{announcement.title}</h4>
+                                    <p>{announcement.content}</p>
+                                    <p style={{ float: 'right', fontSize: '0.75rem', color: '#888', marginTop: '10px' }}>
+                                        Posted by: {announcement.postedBy || 'Unknown Admin'} on {formatTimestamp(announcement.timestamp)}
+                                    </p>
+                                    <div style={{ clear: 'both' }}></div>
+                                </div>
+                            ))}
+                            {announcements.length === 0 && <p>No active announcements at this time. Admins can create one above.</p>}
+                        </React.Fragment>
+                    )}
+                </div>
+            );
+        }
+
+        // 3.7. Dashboard Home View (User's Profile and Editor) - MUST be defined before DashboardPage
+        function DashboardHome() {
+            const { currentUser, db } = useAuth();
+            const [profile, setProfile] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const fetchProfile = async () => {
+                    if (!currentUser) return;
+                    try {
+                        // CRITICAL: Regular user MUST be able to read their own profile (check rules)
+                        const profileSnap = await db.collection("profiles").doc(currentUser.uid).get();
+                        setProfile(profileSnap.exists ? profileSnap.data() : null);
+                    } catch (e) {
+                         console.error("Error fetching user profile (check rules):", e);
+                        // Suppress: Expected if the user is banned and rules only allow them to read 'isBanned' field (which we checked in AuthProvider)
+                    }
+                    setLoading(false);
+                };
+                fetchProfile();
+            }, [currentUser]);
+
+            if (loading) return <p>Loading your profile...</p>;
+
+            return (
+                <div>
+                    <h3><i className="fas fa-user-circle"></i> My Profile</h3>
+                    <div className="profile-info" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
+                        <img 
+                            // FIX: Revert optional chaining back to safe check (Fix for image_260e2b.png)
+                            src={(profile && profile.imageUrl) || "https://via.placeholder.com/60"} 
+                            alt="Profile" 
+                            className="profile-img" 
+                            style={{ 
+                                width: '60px', 
+                                height: '60px', 
+                                borderRadius: '50%', 
+                                border: `3px solid ${(profile && profile.borderColor) || 'var(--accent-red)'}` 
+                            }}
+                        />
+                        <div>
+                            <p style={{ margin: 0, fontWeight: 'bold' }}>{(profile && profile.name) || 'Loading...'}</p>
+                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#999' }}>Email: {currentUser.email}</p>
+                        </div>
+                    </div>
+                    
+                    {/* Check if the current user themselves is banned and show a warning */}
+                    {profile && profile.isBanned && (
+                         <div className="error-message" style={{ marginTop: '20px', backgroundColor: 'darkred' }}>
+                            <i className="fas fa-exclamation-triangle"></i> This account is **BANNED**. You have limited access.
+                        </div>
+                    )}
+                    
+                    <h4><i className="fas fa-pen-fancy"></i> Edit Profile</h4>
+                    <ProfileEditor profileData={profile} profileId={currentUser.uid} />
+                </div>
+            );
+        }
+        
+        // 3.8. Admin Data Reset/Management Tool
+        function DataManagement() {
+            const { db, currentUser, logAdminAction } = useAuth();
+            const [message, setMessage] = useState('');
+            const [collectionData, setCollectionData] = useState({});
+            const [logs, setLogs] = useState([]);
+            const [showCleanupModal, setShowCleanupModal] = useState(false);
+            const [targetCollection, setTargetCollection] = useState(null);
+
+            const collections = ['profiles', 'admins', 'activityLogs', 'announcements', 'appeals']; 
+
+            const fetchCollectionData = async () => {
+                const data = {};
+                for (const name of collections) {
+                    try {
+                        const snapshot = await db.collection(name).get();
+                        const count = snapshot.docs.length;
+                        const estimatedSize = (count * 1.5).toFixed(2) + ' KB'; 
+                        data[name] = { count, estimatedSize };
+                    } catch (error) {
+                        data[name] = { count: 'Error', estimatedSize: 'N/A' };
+                        // Suppress: Expected for non-admin on admin-only collections
+                    }
+                }
+                setCollectionData(data);
+            };
+
+            const fetchLogs = async () => {
+                try {
+                    // CRITICAL: Only admin can read activityLogs (check rules)
+                    const snapshot = await db.collection("activityLogs")
+                        .orderBy("timestamp", "desc")
+                        .limit(20)
+                        .get();
+                    const logList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setLogs(logList);
+                } catch (error) {
+                    console.error("Error fetching logs (check rules):", error);
+                }
+            };
+            
+            useEffect(() => {
+                fetchCollectionData();
+                fetchLogs();
+            }, []);
+            
+            const openCleanupModal = (collectionName) => {
+                setTargetCollection(collectionName);
+                setShowCleanupModal(true);
+            };
+
+            const handleClearCollection = async () => {
+                const collectionName = targetCollection;
+                setShowCleanupModal(false);
+                setTargetCollection(null);
+
+                setMessage(`Clearing ${collectionName}...`);
+                try {
+                    const batch = db.batch();
+                    const snapshot = await db.collection(collectionName).get();
+                    let deletedCount = 0;
+                    
+                    if (snapshot.docs.length === 0) {
+                        setMessage(`Collection '${collectionName}' is already empty.`);
+                        return;
+                    }
+
+                    snapshot.docs.forEach(doc => {
+                        if (collectionName === 'admins' && doc.id === currentUser.uid) {
+                            // Skip deleting the currently logged-in admin's record
+                        } else {
+                            batch.delete(doc.ref);
+                            deletedCount++;
+                        }
+                    });
+
+                    if (deletedCount === 0) {
+                         setMessage(`Collection '${collectionName}' cleanup complete. No items deleted (Self-preservation skipped current admin).`);
+                    } else {
+                        await batch.commit();
+                        logAdminAction('DATA_CLEANUP', { collection: collectionName, deletedCount: deletedCount });
+                        setMessage(`Successfully deleted ${deletedCount} documents from '${collectionName}'.`);
+                    }
+                    
+                    fetchCollectionData();
+                    fetchLogs();
+
+                } catch (error) {
+                    console.error(`Error clearing ${collectionName} (check rules):`, error);
+                    logAdminAction('DATA_CLEANUP_FAILED', { collection: collectionName, error: error.message });
+                    setMessage(`ERROR clearing ${collectionName}: ${error.message}`);
+                }
+            };
+
+            const formatTimestamp = (timestamp) => {
+                if (!timestamp) return 'N/A';
+                const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp); 
+                return date.toLocaleString();
+            };
+
+            return (
+                <div>
+                    <h3><i className="fas fa-database"></i> Data Management & Monitoring</h3>
+                    
+                    {/* Confirmation Modal */}
+                    {showCleanupModal && targetCollection && (
+                         <ConfirmationModal
+                            title={`CONFIRM: DELETE ${targetCollection.toUpperCase()}`}
+                            confirmText="WIPE DATA"
+                            cancelText="CANCEL"
+                            onConfirm={handleClearCollection}
+                            onCancel={() => setShowCleanupModal(false)} // Fix: Use setShowCleanupModal
+                            confirmClass="btn-danger"
+                        >
+                            <p style={{color: 'red', fontWeight: 'bold'}}>
+                                THIS ACTION IS IRREVERSIBLE.
+                            </p>
+                            <p>
+                                Are you absolutely sure you want to delete **ALL** data from the 
+                                **`{targetCollection}`** collection? 
+                            </p>
+                            {targetCollection === 'admins' && (
+                                <p style={{ fontSize: '0.9rem', color: 'orange' }}>
+                                    (Note: Your own admin record will be protected.)
+                                </p>
+                            )}
+                        </ConfirmationModal>
+                    )}
+
+                    {/* 1. Data Size Estimation */}
+                    <div style={{ padding: '15px', border: '1px solid var(--info-blue)', borderRadius: '4px', marginBottom: '30px' }}>
+                        <h4><i className="fas fa-chart-bar"></i> Database Metrics (Estimated)</h4>
+                        <p style={{ fontSize: '0.9rem', color: '#ccc' }}>Counts are live. Size is estimated (1.5 KB/doc minimum).</p>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: 'var(--secondary-bg)' }}>
+                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Collection</th>
+                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--border-color)' }}>Documents</th>
+                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--border-color)' }}>Est. Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {collections.map(name => (
+                                    <tr key={name}>
+                                        <td style={{ padding: '8px' }}>{name}</td>
+                                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                                            {/* Corrected Conditional Rendering Syntax (Fix for image_26dc83.png) */}
+                                            {(collectionData[name] && collectionData[name].count) || 0}
+                                        </td>
+                                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                                            {/* Corrected Conditional Rendering Syntax (Fix for image_26dc83.png) */}
+                                            {(collectionData[name] && collectionData[name].estimatedSize) || '0 KB'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <button 
+                            className="btn" 
+                            style={{ width: 'auto', padding: '8px 15px', marginTop: '15px', backgroundColor: '#333' }}
+                            onClick={fetchCollectionData}
+                        >
+                            <i className="fas fa-sync"></i> Refresh Metrics
+                        </button>
+                    </div>
+
+                    {/* 2. Activity Log */}
+                    <div style={{ padding: '15px', border: '1px solid var(--accent-green)', borderRadius: '4px', marginBottom: '30px' }}>
+                        <h4><i className="fas fa-history"></i> Recent Admin Activity Log</h4>
+                        {logs.length === 0 ? (
+                            <p>No recent admin activity found. (Expected if non-admin)</p>
+                        ) : (
+                            logs.map(log => (
+                                <div key={log.id} className="log-item">
+                                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>
+                                        {formatTimestamp(log.timestamp)} - <span style={{ color: log.action.includes('FAILED') ? 'var(--accent-red)' : 'var(--accent-green)' }}>{log.action}</span>
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                                        **Actor:** {log.actorEmail} ({log.actorId})
+                                    </p>
+                                    <p style={{ margin: '5px 0 0 0', fontSize: '0.8rem', color: '#aaa' }}>
+                                        {JSON.stringify(log.details)}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                        <button 
+                            className="btn" 
+                            style={{ width: 'auto', padding: '8px 15px', marginTop: '15px', backgroundColor: '#333' }}
+                            onClick={fetchLogs}
+                        >
+                            <i className="fas fa-redo"></i> Refresh Logs
+                        </button>
+                    </div>
+
+                    {/* 3. Data Cleanup/Reset */}
+                    <div style={{ padding: '15px', border: '1px solid var(--accent-red)', borderRadius: '4px', marginBottom: '20px' }}>
+                        <h4><i className="fas fa-exclamation-triangle"></i> Collection Cleanup (DANGEROUS)</h4>
+                        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                            <button 
+                                className="btn btn-danger" 
+                                style={{ flex: 1, minWidth: '150px' }}
+                                onClick={() => openCleanupModal('profiles')}
+                            >
+                                <i className="fas fa-trash-alt"></i> Profiles
+                            </button>
+                            <button 
+                                className="btn btn-danger" 
+                                style={{ flex: 1, minWidth: '150px' }}
+                                onClick={() => openCleanupModal('admins')}
+                            >
+                                <i className="fas fa-user-times"></i> Admins
+                            </button>
+                            <button 
+                                className="btn btn-danger" 
+                                style={{ flex: 1, minWidth: '150px' }}
+                                onClick={() => openCleanupModal('activityLogs')}
+                            >
+                                <i className="fas fa-broom"></i> Logs
+                            </button>
+                            <button 
+                                className="btn btn-danger" 
+                                style={{ flex: 1, minWidth: '150px' }}
+                                onClick={() => openCleanupModal('announcements')}
+                            >
+                                <i className="fas fa-broadcast-tower"></i> Announce
+                            </button>
+                             <button 
+                                className="btn btn-danger" 
+                                style={{ flex: 1, minWidth: '150px' }}
+                                onClick={() => openCleanupModal('appeals')}
+                            >
+                                <i className="fas fa-file-contract"></i> Appeals
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {message && <p style={{ color: message.includes('ERROR') ? 'var(--accent-red)' : 'lightgreen' }}>{message}</p>}
+                </div>
+            );
+        }
+
+        // 3.9. APPEAL REVIEW COMPONENT (ADMIN)
+        function AppealReview() {
+            const { db, currentUser, logAdminAction, fetchStatus } = useAuth();
+            const [appeals, setAppeals] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [message, setMessage] = useState('');
+            const [selectedAppeal, setSelectedAppeal] = useState(null);
+            
+            const [showModal, setShowModal] = useState(false);
+            const [modalDecision, setModalDecision] = useState(null);
+
+            const fetchPendingAppeals = async () => {
+                setLoading(true);
+                try {
+                    // CRITICAL: Only admin can read 'appeals' (check rules)
+                    const snapshot = await db.collection("appeals")
+                        .where("status", "==", "Pending")
+                        .orderBy("timestamp", "asc")
+                        .get();
+                    
+                    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setAppeals(list);
+                } catch (error) {
+                    console.error("Error fetching appeals (check rules):", error);
+                    setMessage("Failed to fetch appeals. Check Firebase rules.");
+                    setAppeals([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchPendingAppeals();
+            }, []);
+            
+            const openDecisionModal = (appeal, decision) => {
+                setSelectedAppeal(appeal);
+                setModalDecision(decision);
+                setShowModal(true);
+            };
+
+            const executeDecision = async () => {
+                setShowModal(false);
+                if (!selectedAppeal) return;
+                
+                const appeal = selectedAppeal;
+                const decision = modalDecision;
+                
+                setMessage(`Processing decision for ${appeal.userEmail}...`);
+                
+                try {
+                    // CRITICAL: Admin update to 'appeals' status (check rules)
+                    await db.collection("appeals").doc(appeal.id).update({
+                        status: decision,
+                        reviewerId: currentUser.uid,
+                        reviewTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    let logDetails = { targetUserId: appeal.userId, decision: decision };
+                    
+                    if (decision === 'unban_member' || decision === 'unban_admin') {
+                        // CRITICAL: Admin update to 'isBanned' must succeed (check rules)
+                        await db.collection("profiles").doc(appeal.userId).update({
+                            isBanned: false
+                        });
+                        
+                        const isAdminRole = decision === 'unban_admin';
+                        const adminDocRef = db.collection("admins").doc(appeal.userId);
+                        
+                        // CRITICAL: Admin access to 'admins' collection (check rules)
+                        if (isAdminRole) {
+                            await adminDocRef.set({ grantedByAppeal: currentUser.uid, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                            logAdminAction('APPEAL_UNBAN_PROMOTE', logDetails);
+                        } else {
+                            await adminDocRef.delete(); 
+                            logAdminAction('APPEAL_UNBAN_MEMBER', logDetails);
+                        }
+                        
+                        setMessage(`User ${appeal.userEmail} has been **UNBANNED** and set as a **${isAdminRole ? 'ADMIN' : 'MEMBER'}**.`);
+
+                    } else if (decision === 'reject') {
+                        logAdminAction('APPEAL_REJECTED', logDetails);
+                        setMessage(`Appeal for ${appeal.userEmail} has been **REJECTED** (Ban maintained).`);
+                    }
+
+                    fetchPendingAppeals();
+                    setSelectedAppeal(null);
+                    
+                } catch (error) {
+                    console.error("Decision execution failed (check rules):", error);
+                    logAdminAction('APPEAL_DECISION_FAILED', { ...logDetails, error: error.message });
+                    setMessage(`ERROR: Failed to execute decision for ${appeal.userEmail}. ${error.message}`);
+                }
+            };
+
+
+            if (loading) return <p>Loading appeals...</p>;
+
+            let modalTitle = "";
+            let modalConfirmText = "";
+            let modalConfirmClass = "btn-confirm";
+            let modalContent = null;
+            
+            if (modalDecision && selectedAppeal) {
+                const userEmail = selectedAppeal.userEmail;
+                switch (modalDecision) {
+                    case 'unban_member':
+                        modalTitle = "Confirm Unban & Member Role";
+                        modalConfirmText = "GRANT ACCESS (MEMBER)";
+                        modalConfirmClass = "btn-confirm";
+                        modalContent = <p>Grant **{userEmail}** access as a **standard MEMBER**. Their Admin role will be revoked if applicable.</p>;
+                        break;
+                    case 'unban_admin':
+                        modalTitle = "Confirm Unban & Admin Role";
+                        modalConfirmText = "GRANT ACCESS (ADMIN)";
+                        modalConfirmClass = "btn-confirm";
+                        modalContent = <p>Grant **{userEmail}** access and **PROMOTE** them to **ADMIN**.</p>;
+                        break;
+                    case 'reject':
+                        modalTitle = "Confirm Ban Maintenance";
+                        modalConfirmText = "REJECT APPEAL";
+                        modalConfirmClass = "btn-danger";
+                        modalContent = <p>Are you sure you want to **REJECT** the appeal from **{userEmail}**? Their ban will remain active.</p>;
+                        break;
+                }
+            }
+
+
+            return (
+                <div>
+                    <h3><i className="fas fa-file-contract"></i> Admin: Ban Appeal Review</h3>
+                    
+                    {/* Decision Confirmation Modal */}
+                    {showModal && selectedAppeal && (
+                        <ConfirmationModal
+                            title={modalTitle}
+                            confirmText={modalConfirmText}
+                            cancelText="CANCEL"
+                            onConfirm={executeDecision}
+                            onCancel={() => setShowModal(false)}
+                            confirmClass={modalConfirmClass}
+                        >
+                            {modalContent}
+                        </ConfirmationModal>
+                    )}
+                    
+                    {message && <p style={{ color: message.includes('ERROR') ? 'var(--accent-red)' : 'lightgreen' }}>{message}</p>}
+                    
+                    <h4><i className="fas fa-list"></i> Pending Appeals ({appeals.length})</h4>
+                    
+                    {appeals.length === 0 ? (
+                        <p>No appeals are currently pending review.</p>
+                    ) : (
+                        appeals.map(appeal => (
+                            <div key={appeal.id} className="appeal-item">
+                                <div style={{ flex: '1 1 50%' }}>
+                                    <p style={{ margin: 0, fontWeight: 'bold' }}>User: {appeal.userEmail}</p>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#aaa' }}>Submitted: {new Date(appeal.timestamp.toDate()).toLocaleString()}</p>
+                                </div>
+                                
+                                <div className="appeal-content">
+                                    "{appeal.appealText}"
+                                </div>
+                                
+                                <div className="appeal-actions">
+                                    <button 
+                                        className="btn btn-confirm" 
+                                        style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                        onClick={() => openDecisionModal(appeal, 'unban_member')}
+                                    >
+                                        <i className="fas fa-user-check"></i> Grant Member
+                                    </button>
+                                    <button 
+                                        className="btn btn-confirm" 
+                                        style={{ padding: '8px 12px', fontSize: '0.8rem', backgroundColor: 'var(--admin-color)', color: '#000' }}
+                                        onClick={() => openDecisionModal(appeal, 'unban_admin')}
+                                    >
+                                        <i className="fas fa-crown"></i> Grant Admin
+                                    </button>
+                                    <button 
+                                        className="btn btn-danger" 
+                                        style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                        onClick={() => openDecisionModal(appeal, 'reject')}
+                                    >
+                                        <i className="fas fa-ban"></i> Reject Appeal
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                    
+                    <button 
+                        className="btn" 
+                        style={{ width: 'auto', padding: '8px 15px', marginTop: '15px', backgroundColor: '#333' }}
+                        onClick={fetchPendingAppeals}
+                    >
+                        <i className="fas fa-sync"></i> Refresh Appeals
+                    </button>
+                </div>
+            );
+        }
+
+        // 3.10. Navigation Bar
+        function Navbar({ currentView, setView }) {
+            const { isAdmin, logout } = useAuth();
+            
+            return (
+                <div className="navbar">
+                    <h1>Essence Resort</h1>
+                    <div className="nav-links">
+                        <button onClick={() => setView('home')} className={currentView === 'home' ? 'active' : ''}>
+                            <i className="fas fa-home"></i> My Profile
+                        </button>
+                        <button onClick={() => setView('announcements')} className={currentView === 'announcements' ? 'active' : ''}>
+                            <i className="fas fa-bullhorn"></i> Announcements
+                        </button>
+                        {isAdmin && (
+                            <button onClick={() => setView('users')} className={currentView === 'users' ? 'active' : ''}>
+                                <i className="fas fa-user-shield"></i> User Admin
+                            </button>
+                        )}
+                        {isAdmin && (
+                            <button onClick={() => setView('appeals')} className={currentView === 'appeals' ? 'active' : ''}>
+                                <i className="fas fa-file-contract"></i> Appeals
+                            </button>
+                        )}
+                        {isAdmin && (
+                            <button onClick={() => setView('data')} className={currentView === 'data' ? 'active' : ''}>
+                                <i className="fas fa-toolbox"></i> Data Mgmt
+                            </button>
+                        )}
+                    </div>
+                    <button className="btn" style={{ width: 'auto', padding: '8px 15px' }} onClick={logout}>
+                        <i className="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            );
+        }
+
+        // 3.11. MAIN DASHBOARD COMPONENT (Router) - MUST be defined before App
+        function DashboardPage() {
+            const [view, setView] = useState('home');
+            const { isAdmin } = useAuth();
+
+            let Content;
+            switch (view) {
+                case 'users':
+                    Content = isAdmin ? UserManagement : DashboardHome;
+                    break;
+                case 'announcements':
+                    Content = Announcements;
+                    break;
+                case 'appeals':
+                    Content = isAdmin ? AppealReview : DashboardHome;
+                    break;
+                case 'data':
+                    Content = isAdmin ? DataManagement : DashboardHome;
+                    break;
+                case 'home':
+                default:
+                    Content = DashboardHome;
+            }
+
+            return (
+                <React.Fragment>
+                    <Navbar currentView={view} setView={setView} />
+                    <div className="panel">
+                        <Content />
+                    </div>
+                </React.Fragment>
+            );
+        }
+        
+        // ---
+        // 4. LOGIN/SIGNUP PAGES 
+        // ---
+        function LoginPage({ setPage }) {
+            const { login } = useAuth();
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                try {
+                    await login(email, password);
+                } catch (err) {
+                    if (err.message.includes("banned")) {
+                         setError(`Login failed: ${err.message}`);
+                    } else {
+                         setError(`Login failed: Invalid credentials or account does not exist.`);
+                    }
+                }
+            };
+
+            return (
+                <React.Fragment>
+                    <h3><i className="fas fa-sign-in-alt"></i> Login</h3>
+                    <form onSubmit={handleSubmit}>
+                        {error && <div className="error-message">{error}</div>}
+                        <div className="form-group">
+                            <label>Email</label>
+                            <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <label>Password</label>
+                            <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        </div>
+                        <button type="submit" className="btn">Log In</button>
+                    </form>
+                    <button className="btn-link" onClick={() => setPage('signup')}>Need an account? Sign Up</button>
+                </React.Fragment>
+            );
+        }
+
+        function SignupPage({ setPage }) {
+            const { signup } = useAuth();
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                try {
+                    await signup(email, password);
+                } catch (err) {
+                    setError(`Signup failed: ${err.message}`);
+                }
+            };
+
+            return (
+                <React.Fragment>
+                    <h3><i className="fas fa-user-plus"></i> Sign Up</h3>
+                    <form onSubmit={handleSubmit}>
+                        {error && <div className="error-message">{error}</div>}
+                        <div className="form-group">
+                            <label>Email</label>
+                            <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                        </div>
+                        <div className="form-group">
+                            <label>Password</label>
+                            <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        </div>
+                        <button type="submit" className="btn">Register</button>
+                    </form>
+                    <button className="btn-link" onClick={() => setPage('login')}>Already have an account? Log In</button>
+                </React.Fragment>
+            );
+        }
+
+        // ---
+        // 5. MAIN APP COMPONENT (Root Router) - MUST be defined last
+        // ---
+        function App() {
+            const { currentUser, isBanned } = useAuth();
+            const [page, setPage] = useState('login');
+
+            if (currentUser) {
+                if (isBanned) {
+                    return <BanAppealModal />; 
+                }
+                
+                return <DashboardPage />;
+            }
+
+            switch (page) {
+                case 'login':
+                    return <div className="auth-panel"><LoginPage setPage={setPage} /></div>;
+                case 'signup':
+                    return <div className="auth-panel"><SignupPage setPage={setPage} /></div>;
+                default:
+                    return <div className="auth-panel"><LoginPage setPage={setPage} /></div>;
+            }
+        }
+
+        // ---
+        // 6. RENDER THE APPLICATION
+        // ---
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            <AuthProvider>
+                <App />
+            </AuthProvider>
+        );
+    </script>
+
+</body>
+</html>
