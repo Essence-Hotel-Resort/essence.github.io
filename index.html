@@ -6,11 +6,11 @@
     <title>Essence Hotel & Resort Command</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Firebase SDKs -->
+    <!-- Load Lucide Icons -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, orderBy, limit, addDoc, serverTimestamp, arrayUnion, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp, arrayUnion, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase variables will be set here
@@ -19,6 +19,13 @@
         window.signInAnonymously = signInAnonymously;
         window.signInWithCustomToken = signInWithCustomToken;
         window.onAuthStateChanged = onAuthStateChanged;
+        window.signOut = signOut;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.writeUpdate = updateProfile;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.sendEmailVerification = sendEmailVerification;
+        window.updateProfile = updateProfile;
+        
         window.getFirestore = getFirestore;
         window.doc = doc;
         window.getDoc = getDoc;
@@ -28,13 +35,13 @@
         window.collection = collection;
         window.query = query;
         window.where = where;
-        window.orderBy = orderBy;
         window.limit = limit;
         window.addDoc = addDoc;
         window.serverTimestamp = serverTimestamp;
         window.arrayUnion = arrayUnion;
         window.getDocs = getDocs;
         window.setLogLevel = setLogLevel;
+        window.orderBy = orderBy;
     </script>
     <style>
         /* Custom Lofi/Futuristic Red Scrollbar */
@@ -53,8 +60,52 @@
             background: #b91c1c; /* darker red */
         }
 
-        /* Set the Inter font as default */
+        /* Set the Inter font as default and ensure full screen */
         body { font-family: 'Inter', sans-serif; }
+
+        /* General Button Styling for the app */
+        .app-btn {
+            @apply bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 shadow-md shadow-red-900/50;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            @apply fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50;
+        }
+
+        /* Input Styling */
+        .app-input {
+            @apply w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            text-align: left;
+            border-radius: 0.5rem;
+            transition: background-color 150ms;
+            color: #d1d5db; /* text-gray-300 */
+        }
+        .nav-item:hover {
+            background-color: #450a0a; /* bg-red-900/50 */
+        }
+        .admin-tab {
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            color: #9ca3af; /* text-gray-400 */
+            border-bottom: 2px solid transparent;
+            transition: all 200ms;
+        }
+        .admin-tab:hover {
+            color: #fca5a5; /* text-red-300 */
+        }
+        .admin-tab.active {
+            color: #f87171; /* text-red-400 */
+            border-bottom-color: #dc2626; /* border-red-600 */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
@@ -64,172 +115,226 @@
         <div id="loading-screen" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
             <div class="text-center">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-                <p class="text-lg text-red-500">Initializing Galactic Systems...</p>
+                <p class="text-lg text-red-500">Initializing Core Systems...</p>
             </div>
         </div>
 
-        <!-- Header (Navigation Bar) -->
-        <header class="bg-gray-800 shadow-xl p-4 flex justify-between items-center z-10 sticky top-0 border-b border-red-900/50">
+        <!-- Header (Navigation Bar) - Always Visible for App View -->
+        <header id="app-header" class="bg-gray-800 shadow-xl p-4 flex justify-between items-center z-10 sticky top-0 border-b border-red-900/50 hidden">
             <h1 class="text-2xl font-bold text-red-500 tracking-wider">
                 <span class="hidden sm:inline">ESSENCE HOTEL & RESORT</span> // COMMAND CENTER
             </h1>
             <div class="flex items-center space-x-4">
-                <button id="profile-btn" class="flex items-center space-x-2 p-2 rounded-full hover:bg-red-900/50 transition duration-150">
+                <button id="profile-btn" onclick="setView('profile')" class="flex items-center space-x-2 p-2 rounded-full hover:bg-red-900/50 transition duration-150">
                     <img id="profile-avatar" src="https://placehold.co/40x40/1f2937/ffffff?text=U" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-red-500 object-cover">
-                    <span id="profile-name" class="font-medium hidden sm:inline">Loading...</span>
+                    <span id="profile-name" class="font-medium hidden sm:inline">User</span>
                 </button>
+                <button onclick="handleSignOut()" class="bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 px-4 rounded-lg transition duration-150 text-sm">Sign Out</button>
             </div>
         </header>
 
         <!-- Main Content Area -->
         <main class="flex flex-grow overflow-hidden">
-            <!-- Sidebar Navigation -->
-            <nav class="w-16 sm:w-64 bg-gray-800/80 p-4 border-r border-red-900/50 flex flex-col space-y-4 shadow-2xl transition-all duration-300 flex-shrink-0">
-                <button onclick="setView('posts')" class="nav-item">
-                    <span class="text-red-500 text-xl">📰</span>
-                    <span class="hidden sm:inline">Posts/Updates</span>
-                </button>
-                <button onclick="setView('dms')" class="nav-item">
-                    <span class="text-red-500 text-xl">💬</span>
-                    <span class="hidden sm:inline">Direct Messages</span>
-                </button>
-                <button onclick="setView('profile')" class="nav-item">
-                    <span class="text-red-500 text-xl">⚙️</span>
-                    <span class="hidden sm:inline">Settings</span>
-                </button>
-                <!-- Admin Button (Hidden by default) -->
-                <button id="admin-nav-btn" onclick="setView('admin')" class="nav-item hidden">
-                    <span class="text-red-500 text-xl">👑</span>
-                    <span class="hidden sm:inline">Admin Panel</span>
-                </button>
-            </nav>
+            <!-- Landing View (Default Unauthenticated View) -->
+            <div id="landing-view" class="view-container flex-grow flex items-center justify-center p-8">
+                <div class="text-center max-w-2xl bg-gray-800/80 p-10 rounded-xl shadow-2xl border border-red-700/50">
+                    <h1 class="text-5xl font-extrabold text-red-500 mb-4 tracking-tight">Essence Hotel & Resort</h1>
+                    <p class="text-gray-300 text-xl mb-8">Your Galactic Command Center for updates, direct communications, and support services.</p>
+                    <div class="space-x-4">
+                        <button onclick="showModal('login')" class="app-btn px-8">LOGIN</button>
+                        <button onclick="showModal('signup')" class="app-btn px-8 bg-gray-600 hover:bg-gray-700">SIGN UP</button>
+                    </div>
+                    <p id="auth-error-message" class="text-red-400 mt-4 hidden"></p>
+                </div>
+            </div>
 
-            <!-- Content Viewer -->
-            <div id="content-viewer" class="flex-grow p-4 sm:p-8 overflow-y-auto">
-                <!-- Posts View (Default) -->
-                <div id="posts-view" class="view-content">
-                    <h2 class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">Latest Updates</h2>
-                    <div id="posts-list" class="space-y-6">
-                        <!-- Posts will be injected here -->
+            <!-- Verification View (Email Not Verified) -->
+            <div id="verify-view" class="view-container flex-grow flex items-center justify-center p-8 hidden">
+                <div class="text-center max-w-lg bg-yellow-900/40 p-10 rounded-xl shadow-2xl border border-yellow-700/50">
+                    <h2 class="text-3xl font-bold text-yellow-300 mb-4">Action Required: Verify Email</h2>
+                    <p class="text-gray-200 mb-6">Please check your inbox (and spam folder) for a verification link sent to your email address.</p>
+                    <div class="space-y-4">
+                        <button onclick="sendVerificationEmail(true)" class="app-btn px-8 bg-yellow-600 hover:bg-yellow-700">Resend Email</button>
+                        <button onclick="handleSignOut()" class="app-btn px-8 bg-gray-600 hover:bg-gray-700">Sign Out</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- DMs View (List or Thread) -->
-                <div id="dms-view" class="view-content hidden h-full flex flex-col">
-                    <h2 id="dm-header" class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">Direct Messages</h2>
+            <!-- Application View (Authenticated) -->
+            <div id="app-view" class="view-container flex-grow overflow-hidden hidden flex">
+                <!-- Sidebar Navigation -->
+                <nav class="w-16 sm:w-64 bg-gray-800/80 p-4 border-r border-red-900/50 flex flex-col space-y-4 shadow-2xl transition-all duration-300 flex-shrink-0">
+                    <button onclick="setView('posts')" class="nav-item">
+                        <span class="text-red-500 text-xl">📰</span>
+                        <span class="hidden sm:inline">Posts/Updates</span>
+                    </button>
+                    <button onclick="setView('dms')" class="nav-item">
+                        <span class="text-red-500 text-xl">💬</span>
+                        <span class="hidden sm:inline">Direct Messages</span>
+                    </button>
+                    <button onclick="setView('profile')" class="nav-item">
+                        <span class="text-red-500 text-xl">⚙️</span>
+                        <span class="hidden sm:inline">Settings</span>
+                    </button>
+                    <!-- Admin Button (Hidden by default) -->
+                    <button id="admin-nav-btn" onclick="setView('admin')" class="nav-item hidden">
+                        <span class="text-red-500 text-xl">👑</span>
+                        <span class="hidden sm:inline">Admin Panel</span>
+                    </button>
+                </nav>
 
-                    <!-- DM List -->
-                    <div id="dm-list-container" class="flex-grow overflow-y-auto">
-                        <p class="text-gray-400 italic mb-4">Start a new chat by entering a User ID below.</p>
-                        <div class="flex mb-6 space-x-2">
-                            <input id="new-dm-id" type="text" placeholder="Enter User ID to chat (e.g., Guest-XXXX)" class="flex-grow p-3 bg-gray-700 rounded-lg focus:ring-red-500 focus:border-red-500 border-gray-600">
-                            <button onclick="startNewDM()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
-                                Start Chat
-                            </button>
+                <!-- Content Viewer -->
+                <div id="content-viewer" class="flex-grow p-4 sm:p-8 overflow-y-auto">
+                    <!-- Posts View (Default) -->
+                    <div id="posts-view" class="view-content">
+                        <h2 class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">Latest Updates</h2>
+                        <div id="posts-list" class="space-y-6">
+                            <!-- Posts will be injected here -->
                         </div>
-                        <h3 class="text-xl font-medium text-gray-300 mb-3">Active Chats</h3>
-                        <div id="dm-active-list" class="space-y-2">
-                            <!-- DM List items injected here -->
+                    </div>
+
+                    <!-- DMs View (List or Thread) -->
+                    <div id="dms-view" class="view-content hidden h-full flex flex-col">
+                        <h2 id="dm-header" class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">Direct Messages</h2>
+
+                        <!-- DM List -->
+                        <div id="dm-list-container" class="flex-grow overflow-y-auto">
+                            <p class="text-gray-400 italic mb-4">Start a new chat by entering a User ID below (find IDs in Settings).</p>
+                            <div class="flex mb-6 space-x-2">
+                                <input id="new-dm-id" type="text" placeholder="Enter User ID (e.g., QWERTASDFG1234)" class="app-input flex-grow">
+                                <button onclick="startNewDM()" class="app-btn">
+                                    Start Chat
+                                </button>
+                            </div>
+                            <h3 class="text-xl font-medium text-gray-300 mb-3">Active Chats</h3>
+                            <div id="dm-active-list" class="space-y-2">
+                                <!-- DM List items injected here -->
+                            </div>
+                        </div>
+
+                        <!-- DM Thread (Hidden initially) -->
+                        <div id="dm-thread-container" class="hidden flex-col h-full bg-gray-800 rounded-lg p-4">
+                            <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-3 flex-shrink-0">
+                                <h3 id="dm-thread-title" class="text-2xl font-bold text-red-500 truncate">Chat with [User]</h3>
+                                <button onclick="closeDMThread()" class="text-gray-400 hover:text-red-500 transition duration-150 text-xl ml-4">&times;</button>
+                            </div>
+                            <div id="dm-messages" class="flex-grow overflow-y-auto space-y-4 mb-4 p-2 bg-gray-900 rounded-lg">
+                                <!-- Messages injected here -->
+                            </div>
+                            <div class="flex space-x-2 flex-shrink-0">
+                                <input id="dm-input" type="text" placeholder="Send a direct message..." class="app-input flex-grow">
+                                <button onclick="sendDM()" class="app-btn">
+                                    Send
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- DM Thread (Hidden initially) -->
-                    <div id="dm-thread-container" class="hidden flex-col h-full bg-gray-800 rounded-lg p-4">
-                        <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-3">
-                            <h3 id="dm-thread-title" class="text-2xl font-bold text-red-500">Chat with [User]</h3>
-                            <button onclick="closeDMThread()" class="text-gray-400 hover:text-red-500 transition duration-150 text-xl">&times;</button>
+                    <!-- Profile View -->
+                    <div id="profile-view" class="view-content hidden max-w-lg mx-auto bg-gray-800 p-6 rounded-xl shadow-2xl border border-red-900/50">
+                        <h2 class="text-3xl font-light mb-6 text-red-400">User Profile & Settings</h2>
+                        <div class="text-center mb-6">
+                            <img id="profile-edit-avatar" src="https://placehold.co/100x100/1f2937/ffffff?text=U" alt="User Avatar" class="w-24 h-24 rounded-full border-4 border-red-500 object-cover mx-auto mb-4">
+                            <p class="text-gray-400 text-sm">Your unique User ID (share this to receive DMs):</p>
+                            <p id="current-user-id" class="text-red-500 font-mono text-lg break-all p-2 bg-gray-700 rounded-lg select-all"></p>
                         </div>
-                        <div id="dm-messages" class="flex-grow overflow-y-auto space-y-4 mb-4 p-2 bg-gray-900 rounded-lg">
-                            <!-- Messages injected here -->
-                        </div>
-                        <div class="flex space-x-2">
-                            <input id="dm-input" type="text" placeholder="Send a direct message..." class="flex-grow p-3 bg-gray-700 rounded-lg focus:ring-red-500 focus:border-red-500 border-gray-600">
-                            <button onclick="sendDM()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150">
-                                Send
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Profile View -->
-                <div id="profile-view" class="view-content hidden max-w-lg mx-auto bg-gray-800 p-6 rounded-xl shadow-2xl border border-red-900/50">
-                    <h2 class="text-3xl font-light mb-6 text-red-400">User Profile & Settings</h2>
-                    <div class="text-center mb-6">
-                        <img id="profile-edit-avatar" src="https://placehold.co/100x100/1f2937/ffffff?text=U" alt="User Avatar" class="w-24 h-24 rounded-full border-4 border-red-500 object-cover mx-auto mb-4">
-                        <p class="text-gray-400 text-sm">Your unique ID (share this to receive DMs):</p>
-                        <p id="current-user-id" class="text-red-500 font-mono text-lg break-all"></p>
-                    </div>
-
-                    <form id="profile-form" class="space-y-4">
-                        <div>
-                            <label for="name-input" class="block text-sm font-medium text-gray-300">Display Name</label>
-                            <input type="text" id="name-input" class="mt-1 block w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500" required>
-                        </div>
-                        <div>
-                            <label for="image-url-input" class="block text-sm font-medium text-gray-300">Avatar Image URL (No Storage Used)</label>
-                            <input type="url" id="image-url-input" class="mt-1 block w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500" placeholder="https://..." required>
-                        </div>
-                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition duration-150 shadow-lg shadow-red-900/50">
-                            Save Profile
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Admin View (Admin-only) -->
-                <div id="admin-view" class="view-content hidden">
-                    <h2 class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">ADMIN COMMAND PANEL</h2>
-
-                    <!-- Admin Tabs -->
-                    <div class="flex space-x-4 mb-6 border-b border-gray-700">
-                        <button id="tab-posts" onclick="setAdminTab('posts')" class="admin-tab active">Create Update Post</button>
-                        <button id="tab-users" onclick="setAdminTab('users')" class="admin-tab">View Users</button>
-                    </div>
-
-                    <!-- Admin: Create Post Tab -->
-                    <div id="admin-posts-tab" class="admin-tab-content">
-                        <h3 class="text-xl font-medium text-gray-300 mb-4">Publish New Hotel Update</h3>
-                        <form id="post-form" class="space-y-4 bg-gray-800 p-6 rounded-xl">
+                        <form id="profile-form" class="space-y-4">
                             <div>
-                                <label for="post-title" class="block text-sm font-medium text-gray-300">Title</label>
-                                <input type="text" id="post-title" class="mt-1 block w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500" required>
+                                <label for="name-input" class="block text-sm font-medium text-gray-300">Display Name</label>
+                                <input type="text" id="name-input" class="app-input" required>
                             </div>
                             <div>
-                                <label for="post-content" class="block text-sm font-medium text-gray-300">Content</label>
-                                <textarea id="post-content" rows="5" class="mt-1 block w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500" required></textarea>
+                                <label for="image-url-input" class="block text-sm font-medium text-gray-300">Avatar Image URL</label>
+                                <input type="url" id="image-url-input" class="app-input" placeholder="https://..." required>
                             </div>
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150">
-                                POST UPDATE
+                            <button type="submit" class="w-full app-btn">
+                                Save Profile
                             </button>
                         </form>
                     </div>
 
-                    <!-- Admin: View Users Tab -->
-                    <div id="admin-users-tab" class="admin-tab-content hidden">
-                     <h3 class="text-xl font-medium text-gray-300 mb-4">Current Registered Users</h3>
-                        <div id="users-list-container" class="space-y-3">
-                            <!-- User info cards injected here -->
-                            <p id="users-loading-message" class="text-gray-400">Loading user data...</p>
+                    <!-- Admin View (Admin-only) -->
+                    <div id="admin-view" class="view-content hidden">
+                        <h2 class="text-3xl font-light mb-6 text-red-400 border-b border-red-700/50 pb-2">ADMIN COMMAND PANEL</h2>
+
+                        <!-- Admin Tabs -->
+                        <div class="flex space-x-4 mb-6 border-b border-gray-700">
+                            <button id="tab-posts" onclick="setAdminTab('posts')" class="admin-tab active">Create Update Post</button>
+                            <button id="tab-users" onclick="setAdminTab('users')" class="admin-tab">View Users</button>
+                        </div>
+
+                        <!-- Admin: Create Post Tab -->
+                        <div id="admin-posts-tab" class="admin-tab-content">
+                            <h3 class="text-xl font-medium text-gray-300 mb-4">Publish New Hotel Update</h3>
+                            <form id="post-form" class="space-y-4 bg-gray-800 p-6 rounded-xl">
+                                <div>
+                                    <label for="post-title" class="block text-sm font-medium text-gray-300">Title</label>
+                                    <input type="text" id="post-title" class="app-input" required>
+                                </div>
+                                <div>
+                                    <label for="post-content" class="block text-sm font-medium text-gray-300">Content</label>
+                                    <textarea id="post-content" rows="5" class="app-input" required></textarea>
+                                </div>
+                                <button type="submit" class="app-btn">
+                                    POST UPDATE
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Admin: View Users Tab -->
+                        <div id="admin-users-tab" class="admin-tab-content hidden">
+                            <h3 class="text-xl font-medium text-gray-300 mb-4">Current Registered Users</h3>
+                            <div id="users-list-container" class="space-y-3">
+                                <!-- User info cards injected here -->
+                                <p id="users-loading-message" class="text-gray-400">Loading user data...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
+    
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-backdrop hidden" onclick="hideModal(event, 'login')">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-red-700/50" onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-bold text-red-500 mb-4">Login</h3>
+            <form id="login-form" class="space-y-4">
+                <input type="email" id="login-email" placeholder="Email" class="app-input" required>
+                <input type="password" id="login-password" placeholder="Password" class="app-input" required>
+                <button type="submit" class="w-full app-btn">Sign In</button>
+                <p class="text-red-400 text-sm" id="login-error-msg"></p>
+            </form>
+            <p class="text-sm text-gray-400 mt-4 text-center">
+                Need an account? <button onclick="showModal('signup')" class="text-red-400 hover:text-red-300 font-medium">Sign Up</button>
+            </p>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div id="signup-modal" class="modal-backdrop hidden" onclick="hideModal(event, 'signup')">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-red-700/50" onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-bold text-red-500 mb-4">Sign Up</h3>
+            <form id="signup-form" class="space-y-4">
+                <input type="text" id="signup-name" placeholder="Display Name" class="app-input" required>
+                <input type="email" id="signup-email" placeholder="Email" class="app-input" required>
+                <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="app-input" required>
+                <button type="submit" class="w-full app-btn">Create Account</button>
+                <p class="text-red-400 text-sm" id="signup-error-msg"></p>
+            </form>
+            <p class="text-sm text-gray-400 mt-4 text-center">
+                Already have an account? <button onclick="showModal('login')" class="text-red-400 hover:text-red-300 font-medium">Log In</button>
+            </p>
+        </div>
+    </div>
+
 
     <script>
         // --- Globals & Configuration ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        //const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const firebaseConfig = {
-  apiKey: "AIzaSyAqT-2OppehOjHF-JETMCjreAZkZ-iA_Z8",
-  authDomain: "fivem-server-sophoswrld.firebaseapp.com",
-  projectId: "fivem-server-sophoswrld",
-  storageBucket: "fivem-server-sophoswrld.firebasestorage.app",
-  messagingSenderId: "590745467368",
-  appId: "1:590745467368:web:42f1a4a41f9ac7d33a8c5d",
-  measurementId: "G-0XMVYH41J2"
-};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; // Token is no longer used for named users
 
         let app, db, auth;
         let userId = null;
@@ -247,8 +352,6 @@
 
         /**
          * Safely attempts to execute an async function with exponential backoff.
-         * @param {function} fn - The asynchronous function to execute.
-         * @param {number} maxRetries - The maximum number of retries.
          */
         async function withBackoff(fn, maxRetries = 5) {
             for (let i = 0; i < maxRetries; i++) {
@@ -260,20 +363,13 @@
                         throw error;
                     }
                     const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    // console.warn(`Retrying in ${delay / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
 
-        function createUserId(uid) {
-            if (!uid) return 'Guest-Unknown';
-            // Simple hash for Roblox style ID
-            return `Guest-${uid.substring(0, 4).toUpperCase()}`;
-        }
-
         function getDMId(id1, id2) {
-            // Firestore chat ID is based on sorted user IDs
+            // Firestore chat ID is based on sorted user IDs (UIDs)
             return id1 < id2 ? `${id1}_${id2}` : `${id2}_${id1}`;
         }
 
@@ -286,7 +382,22 @@
         
         // --- UI State Management ---
 
+        function showView(viewName) {
+            document.querySelectorAll('.view-container').forEach(el => el.classList.add('hidden'));
+            
+            // Handle App Header visibility
+            if (viewName === 'app') {
+                document.getElementById('app-header').classList.remove('hidden');
+                document.getElementById('app-view').classList.remove('hidden');
+                setView('posts'); // Default to posts inside the app
+            } else {
+                document.getElementById('app-header').classList.add('hidden');
+                document.getElementById(`${viewName}-view`).classList.remove('hidden');
+            }
+        }
+
         function setView(viewName) {
+            // Only runs if showView('app') is active
             document.querySelectorAll('.view-content').forEach(el => el.classList.add('hidden'));
             const targetView = document.getElementById(`${viewName}-view`);
             if (targetView) {
@@ -301,35 +412,24 @@
             }
         }
 
-        function setAdminTab(tab) {
-            document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`admin-${tab}-tab`).classList.remove('hidden');
-
-            document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${tab}`).classList.add('active');
-
-            // Refresh user list when switching to users tab
-            if (tab === 'users') {
-                loadAllUsersForAdmin();
+        function showModal(modalName) {
+            document.getElementById(`${modalName}-modal`).classList.remove('hidden');
+            // Hide other modal if open
+            if (modalName === 'login') {
+                document.getElementById('signup-modal').classList.add('hidden');
+            } else if (modalName === 'signup') {
+                document.getElementById('login-modal').classList.add('hidden');
             }
         }
 
-        function updateProfileUI(user) {
-            document.getElementById('profile-avatar').src = user.imageUrl;
-            document.getElementById('profile-edit-avatar').src = user.imageUrl;
-            document.getElementById('profile-name').textContent = user.name;
-            document.getElementById('current-user-id').textContent = userId;
-
-            document.getElementById('name-input').value = user.name;
-            document.getElementById('image-url-input').value = user.imageUrl;
-
-            if (user.isAdmin) {
-                document.getElementById('admin-nav-btn').classList.remove('hidden');
-            } else {
-                document.getElementById('admin-nav-btn').classList.add('hidden');
+        function hideModal(event, modalName) {
+            // Check if click was on the backdrop itself
+            if (event.target.id === `${modalName}-modal`) {
+                document.getElementById(`${modalName}-modal`).classList.add('hidden');
+                document.getElementById(`${modalName}-error-msg`).textContent = ''; // Clear errors
             }
         }
-
+        
         // --- Core Firebase Initialization & Auth ---
 
         window.onload = async function() {
@@ -346,36 +446,35 @@
                 return;
             }
 
-            // 2. Handle Authentication
+            // 2. Handle Authentication State Changes
             onAuthStateChanged(auth, async (user) => {
+                document.getElementById('loading-screen').classList.add('hidden');
+                
                 if (user) {
                     userId = user.uid;
                     isAuthReady = true;
-                    // Initialize or fetch user profile
-                    await initializeUserProfile(userId);
-                    document.getElementById('loading-screen').classList.add('hidden');
-                    // Start real-time listeners
-                    setupListeners();
-                } else {
-                    // Sign in with custom token or anonymously if token is missing
-                    try {
-                        if (initialAuthToken) {
-                            await withBackoff(() => signInWithCustomToken(auth, initialAuthToken));
-                        } else {
-                            await withBackoff(() => signInAnonymously(auth));
-                        }
-                    } catch (error) {
-                        console.error("Authentication failed:", error);
-                        document.getElementById('loading-screen').innerHTML = '<p class="text-xl text-red-500">Authentication Failed: ' + error.message + '</p>';
+
+                    if (!user.emailVerified) {
+                        showView('verify');
+                        return;
                     }
+                    
+                    // User is authenticated and verified
+                    await initializeUserProfile(userId, user.displayName, user.photoURL);
+                    showView('app');
+                    setupListeners();
+
+                } else {
+                    // User is signed out
+                    userId = null;
+                    isAuthReady = false;
+                    currentUserData = null;
+                    showView('landing');
                 }
             });
-
-            // Set initial view
-            setView('posts');
         }
 
-        async function initializeUserProfile(uid) {
+        async function initializeUserProfile(uid, displayName, photoURL) {
             const userRef = doc(db, USERS_COLLECTION, uid);
 
             try {
@@ -383,11 +482,11 @@
                 if (docSnap.exists()) {
                     currentUserData = docSnap.data();
                 } else {
-                    // Create a new default profile
+                    // Create a new default profile document (runs only once on first sign-up/in)
                     currentUserData = {
-                        name: `Guest-${uid.substring(0, 4)}`,
-                        imageUrl: `https://placehold.co/40x40/dc2626/ffffff?text=${uid.substring(0, 1).toUpperCase()}`,
-                        isAdmin: false,
+                        name: displayName || `Guest-${uid.substring(0, 6)}`,
+                        imageUrl: photoURL || `https://placehold.co/40x40/dc2626/ffffff?text=${(displayName || uid).substring(0, 1).toUpperCase()}`,
+                        isAdmin: false, // Default is not admin
                         lastActive: serverTimestamp(),
                         userId: uid
                     };
@@ -398,21 +497,110 @@
                 console.error("Error initializing user profile:", error);
             }
         }
+        
+        function updateProfileUI(user) {
+            document.getElementById('profile-avatar').src = user.imageUrl;
+            document.getElementById('profile-edit-avatar').src = user.imageUrl;
+            document.getElementById('profile-name').textContent = user.name;
+            document.getElementById('current-user-id').textContent = userId;
 
-        // --- Event Listeners and Listeners Setup ---
+            // Update Profile Form fields
+            document.getElementById('name-input').value = user.name;
+            document.getElementById('image-url-input').value = user.imageUrl;
+
+            // Admin button visibility
+            if (user.isAdmin) {
+                document.getElementById('admin-nav-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-nav-btn').classList.add('hidden');
+            }
+        }
+
+        async function handleSignOut() {
+            try {
+                await withBackoff(() => signOut(auth));
+                showToast('Signed out successfully.', 'gray');
+                showView('landing');
+            } catch (error) {
+                console.error("Sign Out Error:", error);
+                showToast('Error signing out.', 'red');
+            }
+        }
+
+        // --- Auth Modals ---
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error-msg');
+            errorEl.textContent = '';
+
+            try {
+                await withBackoff(() => signInWithEmailAndPassword(auth, email, password));
+                document.getElementById('login-modal').classList.add('hidden');
+                showToast('Login successful!', 'green');
+            } catch (error) {
+                console.error("Login Error:", error);
+                errorEl.textContent = error.message.replace('Firebase: Error (auth/', '').replace(').', '').replace(/-/g, ' ');
+            }
+        });
+
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const name = document.getElementById('signup-name').value;
+            const errorEl = document.getElementById('signup-error-msg');
+            errorEl.textContent = '';
+
+            try {
+                const userCredential = await withBackoff(() => createUserWithEmailAndPassword(auth, email, password));
+                const user = userCredential.user;
+
+                // Set display name on the Firebase user object
+                await withBackoff(() => updateProfile(user, {
+                    displayName: name,
+                    photoURL: `https://placehold.co/40x40/dc2626/ffffff?text=${name.substring(0, 1).toUpperCase()}`
+                }));
+
+                await sendVerificationEmail(false);
+                document.getElementById('signup-modal').classList.add('hidden');
+                showToast('Account created! Please verify your email.', 'green');
+                // The onAuthStateChanged listener will catch this and send to 'verify-view'
+            } catch (error) {
+                console.error("Signup Error:", error);
+                errorEl.textContent = error.message.replace('Firebase: Error (auth/', '').replace(').', '').replace(/-/g, ' ');
+            }
+        });
+        
+        async function sendVerificationEmail(showToastMessage) {
+            try {
+                await withBackoff(() => sendEmailVerification(auth.currentUser));
+                if (showToastMessage) {
+                    showToast('Verification email resent. Check your inbox!', 'green');
+                }
+            } catch (error) {
+                console.error("Error sending verification email:", error);
+                showToast('Failed to send verification email. Try again later.', 'red');
+            }
+        }
+
+        // --- Realtime Listeners Setup ---
 
         function setupListeners() {
             if (!isAuthReady || !userId) return;
 
-            // 1. Listen for current user profile changes
-            onSnapshot(doc(db, USERS_COLLECTION, userId), (doc) => {
-                if (doc.exists()) {
-                    currentUserData = doc.data();
+            // 1. Listen for current user profile changes (already done in onAuthStateChanged, but kept for real-time updates)
+            onSnapshot(doc(db, USERS_COLLECTION, userId), (docSnap) => {
+                if (docSnap.exists()) {
+                    currentUserData = docSnap.data();
                     updateProfileUI(currentUserData);
                 }
-            });
+            }, (error) => console.error("Error listening to user profile:", error));
 
             // 2. Listen for Admin Posts (Updates)
+            // NOTE: orderBy is kept here for ordering, but be aware of index requirements in Firestore.
             const postsQuery = query(collection(db, POSTS_COLLECTION), orderBy('timestamp', 'desc'), limit(50));
             onSnapshot(postsQuery, (snapshot) => {
                 renderPosts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -444,11 +632,19 @@
             if (!name || !imageUrl) return;
 
             try {
+                // 1. Update Firebase Auth Profile (Display Name and Photo URL)
+                await withBackoff(() => updateProfile(auth.currentUser, {
+                    displayName: name,
+                    photoURL: imageUrl
+                }));
+                
+                // 2. Update Firestore Profile Document
                 const userRef = doc(db, USERS_COLLECTION, userId);
                 await withBackoff(() => updateDoc(userRef, {
                     name: name,
                     imageUrl: imageUrl
                 }));
+                
                 showToast('Profile updated successfully!', 'green');
             } catch (error) {
                 console.error("Error updating profile:", error);
@@ -456,7 +652,7 @@
             }
         });
 
-        // --- Posts/Updates Management ---
+        // --- Posts/Updates Management (same as before, minor styling tweaks) ---
 
         function renderPosts(posts) {
             const listEl = document.getElementById('posts-list');
@@ -466,17 +662,20 @@
                 const postEl = document.createElement('div');
                 postEl.className = 'bg-gray-800 p-6 rounded-xl shadow-lg border border-red-900/50 hover:border-red-500 transition duration-300';
                 const date = post.timestamp ? post.timestamp.toDate().toLocaleDateString() : 'N/A';
+                
+                // Author name display (using authorId as a fallback if name isn't set)
+                const authorDisplay = currentUserData && post.authorId === userId ? currentUserData.name : `Admin ${post.authorId.substring(0, 6)}`;
 
                 postEl.innerHTML = `
                     <h3 class="text-2xl font-bold text-red-500 mb-2">${post.title}</h3>
-                    <p class="text-sm text-gray-400 mb-4">Posted by Admin ${createUserId(post.authorId)} on ${date}</p>
+                    <p class="text-sm text-gray-400 mb-4">Posted by ${authorDisplay} on ${date}</p>
                     <p class="text-gray-200 whitespace-pre-wrap">${post.content}</p>
                 `;
                 listEl.appendChild(postEl);
             });
         }
 
-        // --- Direct Messaging (DM) Functions ---
+        // --- Direct Messaging (DM) Functions (largely the same, relying on new auth) ---
 
         async function startNewDM() {
             const targetIdInput = document.getElementById('new-dm-id');
@@ -487,7 +686,7 @@
                 return;
             }
 
-            // Check if user exists (optional, but good for UX)
+            // Check if user exists (now strictly checking UIDs)
             try {
                 const targetUserDoc = await withBackoff(() => getDoc(doc(db, USERS_COLLECTION, targetId)));
                 if (!targetUserDoc.exists()) {
@@ -515,9 +714,9 @@
 
             // Listen for messages in the specific chat
             const chatId = getDMId(userId, recipientId);
-            const messagesQuery = query(doc(db, DMS_COLLECTION, chatId));
+            const chatRef = doc(db, DMS_COLLECTION, chatId);
 
-            onSnapshot(messagesQuery, async (docSnap) => {
+            onSnapshot(chatRef, async (docSnap) => {
                 const messagesData = docSnap.exists() ? docSnap.data().messages || [] : [];
 
                 // Fetch recipient's name for display
@@ -535,12 +734,13 @@
                 renderDMMessages(messagesData, recipientName);
             }, (error) => console.error("Error listening to DM thread:", error));
         }
+        
+        // ... (closeDMThread, renderDMMessages, sendDM, renderDMList functions remain largely the same)
 
         function closeDMThread() {
             currentDMRecipientId = null;
             document.getElementById('dm-thread-container').classList.add('hidden');
             document.getElementById('dm-list-container').classList.remove('hidden');
-            // Re-render DM list (though onSnapshot should handle updates)
             setView('dms');
         }
 
@@ -548,6 +748,7 @@
             const messagesEl = document.getElementById('dm-messages');
             messagesEl.innerHTML = ''; // Clear existing messages
 
+            // Sort in memory as required if orderBy is not used in the query
             messages.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
             messages.forEach(msg => {
@@ -619,7 +820,7 @@
             for (const id of participantIds) {
                 if (id === userId) continue;
 
-                let name = id;
+                let name = id.substring(0, 6); // Default to a truncated ID
                 let imageUrl = `https://placehold.co/40x40/1f2937/ffffff?text=U`;
                 
                 // Fetch user data for name/image
@@ -641,12 +842,13 @@
                     <img src="${imageUrl}" onerror="this.src='https://placehold.co/40x40/1f2937/ffffff?text=U'" alt="Avatar" class="w-10 h-10 rounded-full border border-red-500 object-cover">
                     <div class="text-left flex-grow">
                         <p class="font-medium text-gray-100">${name}</p>
-                        <p class="text-xs text-red-400 font-mono">${id}</p>
+                        <p class="text-xs text-red-400 font-mono">${id.substring(0, 8)}...</p>
                     </div>
                 `;
                 listEl.appendChild(item);
             }
         }
+
 
         // --- Admin Panel Functions ---
 
@@ -683,25 +885,29 @@
             listEl.innerHTML = '<p id="users-loading-message" class="text-gray-400">Loading user data...</p>';
 
             try {
-                const q = query(collection(db, USERS_COLLECTION), orderBy('name'));
+                // Fetch all documents without orderBy to avoid index issues.
+                const q = query(collection(db, USERS_COLLECTION));
                 const snapshot = await withBackoff(() => getDocs(q));
                 
                 if (snapshot.empty) {
                     listEl.innerHTML = '<p class="text-gray-400">No users found.</p>';
                     return;
                 }
+                
+                let users = snapshot.docs.map(doc => doc.data());
+                // Sort by name in memory
+                users.sort((a, b) => a.name.localeCompare(b.name));
 
                 listEl.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const user = doc.data();
+                users.forEach(user => {
                     const userCard = document.createElement('div');
                     userCard.className = 'bg-gray-700 p-4 rounded-lg shadow flex items-center space-x-4 border border-gray-600';
                     userCard.innerHTML = `
                         <img src="${user.imageUrl}" onerror="this.src='https://placehold.co/50x50/1f2937/ffffff?text=U'" alt="Avatar" class="w-12 h-12 rounded-full border-2 ${user.isAdmin ? 'border-red-500' : 'border-gray-500'} object-cover">
-                        <div>
-                            <p class="text-xl font-bold text-gray-100">${user.name} ${user.isAdmin ? '<span class="text-red-500 text-sm">(ADMIN)</span>' : ''}</p>
+                        <div class="truncate">
+                            <p class="text-xl font-bold text-gray-100 truncate">${user.name} ${user.isAdmin ? '<span class="text-red-500 text-sm">(ADMIN)</span>' : ''}</p>
                             <p class="text-sm font-mono text-red-400 break-all">ID: ${user.userId}</p>
-                            <p class="text-sm text-gray-400 break-all">Image URL: ${user.imageUrl.substring(0, 50)}...</p>
+                            <p class="text-sm text-gray-400 truncate">Email: ${user.email || 'N/A'}</p>
                         </div>
                     `;
                     listEl.appendChild(userCard);
@@ -710,6 +916,19 @@
             } catch (error) {
                 console.error("Error loading all users for admin:", error);
                 listEl.innerHTML = '<p class="text-red-500">Error loading users. Check console.</p>';
+            }
+        }
+
+        function setAdminTab(tab) {
+            document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`admin-${tab}-tab`).classList.remove('hidden');
+
+            document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            // Refresh user list when switching to users tab
+            if (tab === 'users') {
+                loadAllUsersForAdmin();
             }
         }
 
@@ -746,40 +965,6 @@
                 setTimeout(() => toast.remove(), 300);
             }, 5000);
         }
-
-        // Styling for Admin Tab buttons
-        const style = document.createElement('style');
-        style.textContent = `
-            .nav-item {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                padding: 0.75rem 1rem;
-                width: 100%;
-                text-align: left;
-                border-radius: 0.5rem;
-                transition: background-color 150ms;
-                color: #d1d5db; /* text-gray-300 */
-            }
-            .nav-item:hover {
-                background-color: #450a0a; /* bg-red-900/50 */
-            }
-            .admin-tab {
-                padding: 0.5rem 1rem;
-                font-weight: 500;
-                color: #9ca3af; /* text-gray-400 */
-                border-bottom: 2px solid transparent;
-                transition: all 200ms;
-            }
-            .admin-tab:hover {
-                color: #fca5a5; /* text-red-300 */
-            }
-            .admin-tab.active {
-                color: #f87171; /* text-red-400 */
-                border-bottom-color: #dc2626; /* border-red-600 */
-            }
-        `;
-        document.head.appendChild(style);
 
     </script>
 </body>
