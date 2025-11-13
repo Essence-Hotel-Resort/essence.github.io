@@ -8,10 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Lucide Icons -->
     <script type="module">
+        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp, arrayUnion, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Import configuration constants from the separate config file
+        import { appId, firebaseConfig, initialAuthToken } from './config.js';
+
 
         // Global Firebase variables will be set here
         window.initializeApp = initializeApp;
@@ -332,10 +337,7 @@
 
     <script>
         // --- Globals & Configuration ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fivem-server-sophoswrld';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; // Token is no longer used for named users
-
+        // Configuration constants are now imported from config.js
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
@@ -490,6 +492,10 @@
                         lastActive: serverTimestamp(),
                         userId: uid
                     };
+                    // Set email field based on auth user data (auth.currentUser will have email)
+                    if(auth.currentUser && auth.currentUser.email) {
+                        currentUserData.email = auth.currentUser.email;
+                    }
                     await withBackoff(() => setDoc(userRef, currentUserData));
                 }
                 updateProfileUI(currentUserData);
@@ -724,7 +730,8 @@
                 try {
                     const userDoc = await withBackoff(() => getDoc(doc(db, USERS_COLLECTION, recipientId)));
                     if (userDoc.exists()) {
-                        recipientName = userDoc.data().name;
+                        const userData = userDoc.data();
+                        recipientName = userData.name;
                         dmTitleEl.textContent = `Chat with ${recipientName}`;
                     }
                 } catch (e) {
@@ -969,4 +976,3 @@
     </script>
 </body>
 </html>
-
