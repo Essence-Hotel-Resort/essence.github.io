@@ -6,16 +6,14 @@
     <title>Essence Hotel & Resort Command</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Lucide Icons -->
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp, arrayUnion, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, limit, addDoc, serverTimestamp, arrayUnion, getDocs, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Import configuration constants from the separate config file
-        import { firebaseConfig } from './config.js';
+        import { appId, firebaseConfig, initialAuthToken } from './config.js';
 
 
         // Global Firebase variables will be set here
@@ -26,10 +24,9 @@
         window.onAuthStateChanged = onAuthStateChanged;
         window.signOut = signOut;
         window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-        window.writeUpdate = updateProfile;
+        window.updateProfile = updateProfile;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
         window.sendEmailVerification = sendEmailVerification;
-        window.updateProfile = updateProfile;
         
         window.getFirestore = getFirestore;
         window.doc = doc;
@@ -47,6 +44,10 @@
         window.getDocs = getDocs;
         window.setLogLevel = setLogLevel;
         window.orderBy = orderBy;
+        
+        window.firebaseAppId = appId; // Exporting to global scope for use in non-module script
+        window.firebaseConfig = firebaseConfig;
+        window.initialAuthToken = initialAuthToken;
     </script>
     <style>
         /* Custom Lofi/Futuristic Red Scrollbar */
@@ -337,7 +338,7 @@
 
     <script>
         // --- Globals & Configuration ---
-        // Configuration constants are now imported from config.js
+        // Configuration constants (appId, firebaseConfig, initialAuthToken) are now available via window scope set in the module script tag.
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
@@ -346,9 +347,9 @@
         let currentDMRecipientId = null;
 
         // Firestore Paths (Public Data)
-        const USERS_COLLECTION = `artifacts/${appId}/public/data/users`;
-        const POSTS_COLLECTION = `artifacts/${appId}/public/data/posts`;
-        const DMS_COLLECTION = `artifacts/${appId}/public/data/dms`;
+        const USERS_COLLECTION = `artifacts/${window.firebaseAppId}/public/data/users`;
+        const POSTS_COLLECTION = `artifacts/${window.firebaseAppId}/public/data/posts`;
+        const DMS_COLLECTION = `artifacts/${window.firebaseAppId}/public/data/dms`;
 
         // --- Utility Functions ---
 
@@ -439,7 +440,7 @@
 
             // 1. Initialize Firebase
             try {
-                app = initializeApp(firebaseConfig);
+                app = initializeApp(window.firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
             } catch (e) {
@@ -448,7 +449,8 @@
                 return;
             }
 
-            // 2. Handle Authentication State Changes
+            // 2. Handle Authentication State Changes (Listener)
+            // This is the primary listener that handles the UI flow after any sign-in/out event.
             onAuthStateChanged(auth, async (user) => {
                 document.getElementById('loading-screen').classList.add('hidden');
                 
@@ -456,12 +458,13 @@
                     userId = user.uid;
                     isAuthReady = true;
 
-                    if (!user.emailVerified) {
+                    // Only check for email verification if an email is present (i.e., not anonymous)
+                    if (user.email && !user.emailVerified) {
                         showView('verify');
                         return;
                     }
                     
-                    // User is authenticated and verified
+                    // User is authenticated and verified (or anonymous)
                     await initializeUserProfile(userId, user.displayName, user.photoURL);
                     showView('app');
                     setupListeners();
@@ -474,6 +477,20 @@
                     showView('landing');
                 }
             });
+            
+            // 3. Environment Sign-In Logic (Must be called to establish initial state)
+            try {
+                if (window.initialAuthToken) {
+                    // Sign in using the custom token provided by the environment
+                    await withBackoff(() => signInWithCustomToken(auth, window.initialAuthToken));
+                } else {
+                    // Sign in anonymously if no custom token is provided
+                    await withBackoff(() => signInAnonymously(auth));
+                }
+            } catch (e) {
+                console.error("Initial environment sign-in failed:", e);
+                // If sign-in fails here, the onAuthStateChanged listener will handle the null user state (showView('landing')).
+            }
         }
 
         async function initializeUserProfile(uid, displayName, photoURL) {
@@ -485,17 +502,15 @@
                     currentUserData = docSnap.data();
                 } else {
                     // Create a new default profile document (runs only once on first sign-up/in)
+                    const user = auth.currentUser;
                     currentUserData = {
-                        name: displayName || `Guest-${uid.substring(0, 6)}`,
+                        name: displayName || (user?.isAnonymous ? `Anon-${uid.substring(0, 6)}` : `Guest-${uid.substring(0, 6)}`),
                         imageUrl: photoURL || `https://placehold.co/40x40/dc2626/ffffff?text=${(displayName || uid).substring(0, 1).toUpperCase()}`,
                         isAdmin: false, // Default is not admin
                         lastActive: serverTimestamp(),
-                        userId: uid
+                        userId: uid,
+                        email: user?.email || 'N/A'
                     };
-                    // Set email field based on auth user data (auth.currentUser will have email)
-                    if(auth.currentUser && auth.currentUser.email) {
-                        currentUserData.email = auth.currentUser.email;
-                    }
                     await withBackoff(() => setDoc(userRef, currentUserData));
                 }
                 updateProfileUI(currentUserData);
@@ -511,8 +526,22 @@
             document.getElementById('current-user-id').textContent = userId;
 
             // Update Profile Form fields
-            document.getElementById('name-input').value = user.name;
-            document.getElementById('image-url-input').value = user.imageUrl;
+            const nameInput = document.getElementById('name-input');
+            const urlInput = document.getElementById('image-url-input');
+
+            // Prevent editing if anonymous user (they don't have updateProfile capability easily)
+            const isAnon = auth.currentUser?.isAnonymous;
+            if (isAnon) {
+                nameInput.disabled = true;
+                urlInput.disabled = true;
+                nameInput.value = "(Anonymous)";
+                urlInput.value = "N/A";
+            } else {
+                nameInput.disabled = false;
+                urlInput.disabled = false;
+                nameInput.value = user.name;
+                urlInput.value = user.imageUrl;
+            }
 
             // Admin button visibility
             if (user.isAdmin) {
@@ -597,7 +626,7 @@
         function setupListeners() {
             if (!isAuthReady || !userId) return;
 
-            // 1. Listen for current user profile changes (already done in onAuthStateChanged, but kept for real-time updates)
+            // 1. Listen for current user profile changes
             onSnapshot(doc(db, USERS_COLLECTION, userId), (docSnap) => {
                 if (docSnap.exists()) {
                     currentUserData = docSnap.data();
@@ -606,10 +635,12 @@
             }, (error) => console.error("Error listening to user profile:", error));
 
             // 2. Listen for Admin Posts (Updates)
-            // NOTE: orderBy is kept here for ordering, but be aware of index requirements in Firestore.
-            const postsQuery = query(collection(db, POSTS_COLLECTION), orderBy('timestamp', 'desc'), limit(50));
+            const postsQuery = query(collection(db, POSTS_COLLECTION), limit(50));
             onSnapshot(postsQuery, (snapshot) => {
-                renderPosts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                let posts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Sort posts in memory
+                posts.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+                renderPosts(posts);
             }, (error) => console.error("Error listening to posts:", error));
 
             // 3. Listen for DM list changes (users who have messaged you)
@@ -634,6 +665,11 @@
             e.preventDefault();
             const name = document.getElementById('name-input').value;
             const imageUrl = document.getElementById('image-url-input').value;
+            
+            if (auth.currentUser?.isAnonymous) {
+                showToast('Profile editing is disabled for anonymous users.', 'red');
+                return;
+            }
 
             if (!name || !imageUrl) return;
 
@@ -658,7 +694,7 @@
             }
         });
 
-        // --- Posts/Updates Management (same as before, minor styling tweaks) ---
+        // --- Posts/Updates Management ---
 
         function renderPosts(posts) {
             const listEl = document.getElementById('posts-list');
@@ -681,7 +717,7 @@
             });
         }
 
-        // --- Direct Messaging (DM) Functions (largely the same, relying on new auth) ---
+        // --- Direct Messaging (DM) Functions ---
 
         async function startNewDM() {
             const targetIdInput = document.getElementById('new-dm-id');
@@ -692,7 +728,7 @@
                 return;
             }
 
-            // Check if user exists (now strictly checking UIDs)
+            // Check if user exists 
             try {
                 const targetUserDoc = await withBackoff(() => getDoc(doc(db, USERS_COLLECTION, targetId)));
                 if (!targetUserDoc.exists()) {
@@ -742,8 +778,6 @@
             }, (error) => console.error("Error listening to DM thread:", error));
         }
         
-        // ... (closeDMThread, renderDMMessages, sendDM, renderDMList functions remain largely the same)
-
         function closeDMThread() {
             currentDMRecipientId = null;
             document.getElementById('dm-thread-container').classList.add('hidden');
@@ -755,7 +789,7 @@
             const messagesEl = document.getElementById('dm-messages');
             messagesEl.innerHTML = ''; // Clear existing messages
 
-            // Sort in memory as required if orderBy is not used in the query
+            // Sort messages in memory by timestamp
             messages.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
             messages.forEach(msg => {
