@@ -219,7 +219,16 @@
     <script>
         // --- Globals & Configuration ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        //const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = {
+  apiKey: "AIzaSyAqT-2OppehOjHF-JETMCjreAZkZ-iA_Z8",
+  authDomain: "fivem-server-sophoswrld.firebaseapp.com",
+  projectId: "fivem-server-sophoswrld",
+  storageBucket: "fivem-server-sophoswrld.firebasestorage.app",
+  messagingSenderId: "590745467368",
+  appId: "1:590745467368:web:42f1a4a41f9ac7d33a8c5d",
+  measurementId: "G-0XMVYH41J2"
+};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth;
